@@ -33,6 +33,8 @@ const MIN_AI_MS = 450; // máy đi quá nhanh trông thiếu tự nhiên
 const NO_CAPTURE_DRAW = 120; // số nửa nước không ăn quân thì xử hòa
 
 const $ = (id) => document.getElementById(id);
+const compactMQ = window.matchMedia('(max-width: 760px), (max-height: 500px)');
+const isPortrait = () => window.innerWidth < window.innerHeight;
 const sqX = (sq) => colOf(sq) - 4;
 const sqZ = (sq) => rowOf(sq) - 4.5;
 
@@ -87,8 +89,8 @@ sun.position.set(-7, 16, 9);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 11, bottom: -11, near: 1, far: 45 });
-sun.shadow.bias = -0.0004;
-sun.shadow.normalBias = 0.02;
+sun.shadow.bias = -0.0015;
+sun.shadow.normalBias = 0.03;
 scene.add(sun);
 const rim = new THREE.DirectionalLight(0xffc58a, 0.6);
 rim.position.set(8, 6, -10);
@@ -212,7 +214,11 @@ function buildBoard() {
   const cn = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
   for (let c = 0; c <= 8; c++) {
     g.fillStyle = '#2a2a2a';
-    g.fillText(String(c + 1), X(c), Y(-0.78));
+    g.save();
+    g.translate(X(c), Y(-0.78));
+    g.rotate(Math.PI);
+    g.fillText(String(c + 1), 0, 0);
+    g.restore();
     g.fillStyle = '#9b2318';
     g.fillText(cn[8 - c], X(c), Y(9.72));
   }
@@ -222,7 +228,7 @@ function buildBoard() {
     new THREE.MeshStandardMaterial({ map: canvasTexture(cv), roughness: 0.6 }),
   );
   top.rotation.x = -Math.PI / 2;
-  top.position.y = TOP + 0.001;
+  top.position.y = TOP + 0.004;
   top.receiveShadow = true;
 
   const [scv, sg] = makeCanvas(512, 64);
@@ -312,16 +318,21 @@ function createPiece(p) {
 
 function gravePosition(side) {
   const k = graveCount[side]++;
+  const view = state.human === BLACK ? -1 : 1;
+  if (isPortrait()) {
+    // Quân của máy bị ăn xếp phía người chơi, quân của mình xếp phía máy
+    const near = side === state.human ? -1 : 1;
+    const x = -3.8 + (k % 9) * 0.95;
+    return new THREE.Vector3(x * view, 0, near * view * (6.3 + Math.floor(k / 9) * 0.95));
+  }
   const dir = side === BLACK ? 1 : -1;
   const z = -3.6 + Math.floor(k / 2) * 0.95;
-  return new THREE.Vector3(dir * (5.9 + (k % 2) * 0.95), 0, state.human === BLACK ? -z : z);
+  return new THREE.Vector3(dir * (5.9 + (k % 2) * 0.95), 0, z * view);
 }
 
 function rebuildPieces() {
   pieceRoot.clear();
-  graveRoot.clear();
   meshes = new Array(90).fill(null);
-  graveCount[RED] = graveCount[BLACK] = 0;
   const b = state.pos.board;
   for (let sq = 0; sq < 90; sq++) {
     if (!b[sq]) continue;
@@ -331,6 +342,12 @@ function rebuildPieces() {
     pieceRoot.add(m);
     meshes[sq] = m;
   }
+  rebuildGraveyard();
+}
+
+function rebuildGraveyard() {
+  graveRoot.clear();
+  graveCount[RED] = graveCount[BLACK] = 0;
   for (const h of state.history) {
     if (!h.captured) continue;
     const m = createPiece(h.captured);
@@ -484,7 +501,10 @@ function getWorker() {
     worker.onmessage = onWorkerMessage;
     worker.onerror = (e) => {
       console.error(e);
-      setStatus('Lỗi khi chạy AI', 'over');
+      worker = null;
+      state.thinking = false;
+      updateUI();
+      $('ai-info').textContent = 'Lỗi khi chạy AI — bấm "Đi lại" hoặc "Ván mới" để thử lại.';
     };
   }
   return worker;
@@ -562,6 +582,7 @@ async function playMove(m) {
   const notation = moveNotation(pos.board, m);
 
   state.locked = true;
+  if (Math.sign(pos.board[from]) === state.human) $('ai-info').textContent = '';
   clearSelection();
   setLayer('hint', []);
   setLayer('check', []);
@@ -624,7 +645,10 @@ function endGame(result, reason) {
   $('modal-title').textContent = titles[result];
   $('modal-text').textContent = reason;
   $('modal').dataset.result = result;
-  setTimeout(() => $('modal').classList.remove('hidden'), 500);
+  const gen = state.gen;
+  setTimeout(() => {
+    if (gen === state.gen && state.over) $('modal').classList.remove('hidden');
+  }, 500);
 }
 
 function newGame() {
@@ -647,7 +671,7 @@ function newGame() {
 }
 
 function undo() {
-  if (state.locked || !state.history.length) return;
+  if (!canUndo()) return;
   cancelAI();
   state.gen++;
   const pos = state.pos;
@@ -665,6 +689,11 @@ function undo() {
   showLastMove();
   renderMoveList();
   afterMove();
+}
+
+function canUndo() {
+  // Khi cầm Đen, nước đầu tiên là của máy nên không tính
+  return !state.locked && state.history.length > (state.human === BLACK ? 1 : 0);
 }
 
 function hint() {
@@ -729,16 +758,29 @@ function pickSquare(ev) {
   return r * 9 + c;
 }
 
+const pointers = new Map(); // pointerId -> vị trí lúc chạm
+let multiTouch = false; // cử chỉ hiện tại từng có nhiều hơn một ngón
 let downAt = null;
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  downAt = { x: e.clientX, y: e.clientY };
+  document.body.classList.remove('panel-open');
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size > 1) multiTouch = true;
+  downAt = pointers.get(e.pointerId);
 });
-renderer.domElement.addEventListener('pointerup', (e) => {
-  if (!downAt) return;
-  const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
-  downAt = null;
-  if (moved < 8) onSquareClick(pickSquare(e)); // kéo xoay camera thì không tính là bấm
-});
+const endPointer = (e, cancelled) => {
+  const start = pointers.get(e.pointerId);
+  pointers.delete(e.pointerId);
+  const wasMulti = multiTouch;
+  if (pointers.size === 0) {
+    multiTouch = false;
+    downAt = null;
+  }
+  if (!start || cancelled || wasMulti) return;
+  // Kéo xoay camera thì không tính là bấm
+  if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) onSquareClick(pickSquare(e));
+};
+renderer.domElement.addEventListener('pointerup', (e) => endPointer(e, false));
+renderer.domElement.addEventListener('pointercancel', (e) => endPointer(e, true));
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (downAt || state.locked || state.over || state.pos.side !== state.human) {
     renderer.domElement.style.cursor = '';
@@ -752,32 +794,71 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 // ---------------------------------------------------------------------------
 // Camera
 
+function panelWidth() {
+  return compactMQ.matches ? 0 : document.querySelector('.panel').offsetWidth + 18;
+}
+
+const fitCamera = new THREE.PerspectiveCamera();
 function homePosition() {
-  const panelW = window.innerWidth > 760 ? document.querySelector('.panel').offsetWidth + 18 : 0;
-  const aspect = (window.innerWidth - panelW) / window.innerHeight;
-  const vfov = THREE.MathUtils.degToRad(camera.fov);
-  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
-  const portrait = aspect < 1;
-  const needW = portrait ? 10.5 : 15.5;
-  const needD = portrait ? 11.5 : 12.5;
-  const dist = Math.max(needW / 2 / Math.tan(hfov / 2), needD / 2 / Math.tan(vfov / 2)) * 1.05;
-  const elev = THREE.MathUtils.degToRad(portrait ? 66 : 56);
+  const portrait = isPortrait();
+  const elev = THREE.MathUtils.degToRad(portrait ? 64 : 56);
   const dir = state.human === BLACK ? -1 : 1;
-  return new THREE.Vector3(0, TOP + dist * Math.sin(elev), dir * dist * Math.cos(elev));
+  const hw = BOARD_W / 2;
+  const hd = BOARD_D / 2;
+  // Các điểm phải nhìn thấy: góc bàn cờ và mép ngoài bãi quân bị ăn
+  const pts = [];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      pts.push(new THREE.Vector3(sx * hw, 0, sz * hd), new THREE.Vector3(sx * hw, TOP, sz * hd));
+      if (portrait) pts.push(new THREE.Vector3(sx * 4.3, PIECE_H, sz * 7.7));
+      else pts.push(new THREE.Vector3(sx * 7.3, PIECE_H, sz * 4.0));
+    }
+  }
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  fitCamera.copy(camera);
+  const xMax = ((w - panelWidth()) / w) * 2 - 1; // phần không bị bảng điều khiển che
+  const margin = 0.04;
+  const place = (dist) =>
+    fitCamera.position.set(0, TOP + dist * Math.sin(elev), dir * dist * Math.cos(elev));
+  const fits = (dist) => {
+    place(dist);
+    fitCamera.lookAt(controls.target);
+    fitCamera.updateMatrixWorld();
+    return pts.every((p) => {
+      const v = p.clone().project(fitCamera);
+      return v.x > -1 + margin && v.x < xMax - margin && v.y > -1 + margin && v.y < 1 - margin - 120 / h;
+    });
+  };
+  let lo = 6;
+  let hi = 80;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) hi = mid;
+    else lo = mid;
+  }
+  return place(hi).clone();
 }
 
 function cameraHome(animated) {
+  // Bỏ phần quán tính còn lại của OrbitControls để camera dừng đúng vị trí
+  controls.enableDamping = false;
+  controls.update();
+  controls.enableDamping = true;
   const target = homePosition();
   if (!animated) {
     camera.position.copy(target);
+    camera.lookAt(controls.target);
     return;
   }
   const start = camera.position.clone();
+  controls.enabled = false;
   // Đi vòng qua phía trên để không xuyên qua bàn cờ khi đổi phe
   tween(900, (t) => {
     const e = easeInOut(t);
     camera.position.lerpVectors(start, target, e);
     camera.position.y += Math.sin(Math.PI * e) * (start.z * target.z < 0 ? 8 : 0);
+    if (t >= 1) controls.enabled = true;
   });
 }
 
@@ -787,15 +868,20 @@ function updateViewport() {
   const h = window.innerHeight;
   camera.aspect = w / h;
   const panel = document.querySelector('.panel');
-  if (w > 760 && panel) camera.setViewOffset(w, h, (panel.offsetWidth + 18) / 2, 0, w, h);
+  if (!compactMQ.matches && panel) camera.setViewOffset(w, h, (panel.offsetWidth + 18) / 2, 0, w, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
 }
 
+let wasPortrait = isPortrait();
 window.addEventListener('resize', () => {
   updateViewport();
   cameraHome(false);
+  if (isPortrait() !== wasPortrait) {
+    wasPortrait = isPortrait();
+    rebuildGraveyard();
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -812,13 +898,13 @@ function updateUI() {
   if (state.over) {
     setStatus('Ván cờ đã kết thúc', 'over');
   } else if (pos.side === state.human) {
-    const check = pos.inCheck(pos.side) ? ' — Bị chiếu tướng!' : '';
+    const check = pos.inCheck(pos.side) ? ' · Bị chiếu!' : '';
     setStatus(`Lượt của bạn (${sideName(state.human)})${check}`, check ? 'check' : 'you');
   } else {
     setStatus(`Máy đang suy nghĩ…`, 'ai');
   }
   $('status').dataset.side = pos.side === RED ? 'red' : 'black';
-  $('btn-undo').disabled = state.locked || !state.history.length;
+  $('btn-undo').disabled = !canUndo();
   $('btn-hint').disabled = state.locked || state.over || state.thinking || pos.side !== state.human;
   $('btn-sound').textContent = state.sound ? '🔊' : '🔇';
 }
@@ -873,8 +959,11 @@ $('side').addEventListener('change', (e) => {
 });
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT') return;
-  if (e.key === 'Escape') clearSelection();
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+  if (e.key === 'Escape') {
+    clearSelection();
+    $('modal').classList.add('hidden');
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     undo();
   }
@@ -887,8 +976,8 @@ function restorePrefs() {
   try {
     const lv = localStorage.getItem('xq-level');
     const sd = localStorage.getItem('xq-side');
-    if (lv) $('level').value = lv;
-    if (sd) $('side').value = sd;
+    if (['easy', 'medium', 'hard'].includes(lv)) $('level').value = lv;
+    if (sd === '1' || sd === '-1') $('side').value = sd;
   } catch {
     // bỏ qua
   }

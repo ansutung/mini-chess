@@ -125,6 +125,13 @@ select option {
   backdrop-filter: blur(8px);
   font-weight: 600;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+#status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .status .dot {
@@ -167,6 +174,7 @@ select option {
 /* ---------- Bảng điều khiển ---------- */
 
 .panel {
+  overflow-y: auto;
   position: fixed;
   top: 76px;
   right: 18px;
@@ -276,7 +284,9 @@ select option {
   place-items: center;
   background: rgba(10, 6, 3, 0.55);
   backdrop-filter: blur(3px);
-  transition: opacity 0.25s;
+  transition:
+    opacity 0.25s,
+    visibility 0.25s;
   z-index: 10;
 }
 
@@ -284,6 +294,7 @@ select option {
 #loading.hidden {
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .card {
@@ -343,7 +354,7 @@ select option {
 
 /* ---------- Màn hình nhỏ ---------- */
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-height: 500px) {
   .topbar {
     padding: 10px 12px;
     gap: 8px;
