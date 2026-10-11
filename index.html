@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Cờ Tướng 3D – Người vs Máy</title>
+    <meta name="description" content="Chơi cờ tướng 3D với máy ngay trên trình duyệt, xây dựng bằng Three.js." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&text=%E5%B8%A5%E4%BB%95%E7%9B%B8%E5%82%8C%E4%BF%A5%E7%82%AE%E5%85%B5%E5%B0%87%E5%A3%AB%E8%B1%A1%E9%A6%AC%E8%BB%8A%E7%A0%B2%E5%8D%92%E6%A5%9A%E6%B2%B3%E6%BC%A2%E7%95%8C%E8%B1%A1%E6%A3%8B%E4%B8%80%E4%BA%8C%E4%B8%89%E5%9B%9B%E4%BA%94%E5%85%AD%E4%B8%83%E5%85%AB%E4%B9%9D123456789&display=block"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="scene"></div>
+
+    <header class="topbar">
+      <div class="brand"><span class="seal">象棋</span><span class="name">Cờ Tướng 3D</span></div>
+      <div id="status" class="status" data-kind="you" data-side="red">
+        <span class="dot"></span><span id="status-text">Đang tải…</span>
+      </div>
+      <button id="btn-panel" class="icon-btn panel-toggle" aria-label="Mở bảng điều khiển">☰</button>
+    </header>
+
+    <aside class="panel">
+      <div class="field">
+        <label for="level">Độ khó</label>
+        <select id="level">
+          <option value="easy">Dễ</option>
+          <option value="medium" selected>Trung bình</option>
+          <option value="hard">Khó</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="side">Bạn cầm</label>
+        <select id="side">
+          <option value="1" selected>Quân Đỏ (đi trước)</option>
+          <option value="-1">Quân Đen (máy đi trước)</option>
+        </select>
+      </div>
+      <div class="buttons">
+        <button id="btn-new" class="primary">Ván mới</button>
+        <button id="btn-undo">↶ Đi lại</button>
+        <button id="btn-hint">💡 Gợi ý</button>
+        <button id="btn-view">⟲ Góc nhìn</button>
+        <button id="btn-sound" class="icon-btn" aria-label="Bật/tắt âm thanh">🔊</button>
+      </div>
+      <div id="ai-info" class="ai-info"></div>
+      <div class="moves-head">Biên bản</div>
+      <ol id="moves" class="moves"></ol>
+      <p class="help">
+        Bấm vào quân để chọn, bấm vào ô sáng để đi. Kéo chuột / vuốt để xoay bàn cờ, cuộn / chụm để phóng to.
+      </p>
+    </aside>
+
+    <div id="modal" class="modal hidden">
+      <div class="card">
+        <h2 id="modal-title"></h2>
+        <p id="modal-text"></p>
+        <div class="buttons">
+          <button id="modal-new" class="primary">Chơi ván mới</button>
+          <button id="modal-close">Xem lại bàn cờ</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading"><div class="spinner"></div><span>Đang bày bàn cờ…</span></div>
+
+    <noscript>Trò chơi cần bật JavaScript.</noscript>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

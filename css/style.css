@@ -1,0 +1,392 @@
+:root {
+  --bg: #1a120d;
+  --panel: rgba(32, 22, 15, 0.82);
+  --border: rgba(255, 214, 160, 0.16);
+  --text: #f6e9d6;
+  --muted: #c2ab8e;
+  --accent: #d9442f;
+  --accent-2: #f0b34a;
+  --black: #e8e1d6;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+}
+
+#scene canvas {
+  display: block;
+  touch-action: none;
+}
+
+button,
+select {
+  font: inherit;
+  color: var(--text);
+  background: rgba(255, 235, 205, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.1s;
+}
+
+button:hover:not(:disabled),
+select:hover {
+  background: rgba(255, 235, 205, 0.16);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.primary {
+  background: linear-gradient(180deg, #e2523b, #b3301e);
+  border-color: #e7735e;
+  font-weight: 600;
+}
+
+button.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ec5e47, #c13724);
+}
+
+select option {
+  background: #2a1d14;
+}
+
+/* ---------- Thanh trên ---------- */
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  pointer-events: none;
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.seal {
+  font-family: 'Noto Serif TC', serif;
+  background: var(--accent);
+  color: #fff3e6;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-size: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.status {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  font-weight: 600;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.status .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(217, 68, 47, 0.25);
+}
+
+.status[data-side='black'] .dot {
+  background: #111;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+.status[data-kind='ai'] .dot {
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+.status[data-kind='check'] {
+  border-color: #ff5a3c;
+  color: #ffd2c6;
+}
+
+.status[data-kind='over'] .dot {
+  background: var(--accent-2);
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+}
+
+.panel-toggle {
+  display: none;
+}
+
+/* ---------- Bảng điều khiển ---------- */
+
+.panel {
+  position: fixed;
+  top: 76px;
+  right: 18px;
+  width: 290px;
+  max-height: calc(100% - 96px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field label {
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.field select {
+  flex: 1;
+  min-width: 0;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.buttons button {
+  flex: 1 1 auto;
+}
+
+.icon-btn {
+  flex: 0 0 auto !important;
+  padding: 8px 11px;
+}
+
+.ai-info {
+  min-height: 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.moves-head {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.moves {
+  margin: 0;
+  padding: 0 0 0 34px;
+  overflow-y: auto;
+  min-height: 60px;
+  max-height: 260px;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
+.moves li {
+  padding: 2px 0;
+  color: var(--muted);
+}
+
+.moves li span {
+  display: inline-block;
+  width: 72px;
+  font-weight: 600;
+}
+
+.moves .red {
+  color: #ff9a85;
+}
+
+.moves .black {
+  color: var(--black);
+}
+
+.help {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- Hộp thoại kết thúc ---------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 6, 3, 0.55);
+  backdrop-filter: blur(3px);
+  transition: opacity 0.25s;
+  z-index: 10;
+}
+
+.modal.hidden,
+#loading.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card {
+  width: min(360px, calc(100% - 32px));
+  padding: 26px 24px 22px;
+  border-radius: 18px;
+  text-align: center;
+  background: linear-gradient(180deg, #3a281b, #24180f);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.modal[data-result='win'] h2 {
+  color: var(--accent-2);
+}
+
+.card p {
+  margin: 0 0 20px;
+  color: var(--muted);
+}
+
+/* ---------- Màn hình tải ---------- */
+
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--bg);
+  color: var(--muted);
+  transition: opacity 0.4s;
+  z-index: 20;
+}
+
+.spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 220, 180, 0.15);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Màn hình nhỏ ---------- */
+
+@media (max-width: 760px) {
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .brand .name {
+    display: none;
+  }
+
+  .status {
+    font-size: 13px;
+    padding: 7px 12px;
+    margin: 0;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .panel-toggle {
+    display: block;
+  }
+
+  .panel {
+    top: auto;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    max-height: 60%;
+    padding: 12px;
+    gap: 10px;
+    transform: translateY(calc(100% + 20px));
+    transition: transform 0.25s ease;
+  }
+
+  body.panel-open .panel {
+    transform: none;
+  }
+
+  .moves {
+    max-height: 120px;
+  }
+
+  .help {
+    display: none;
+  }
+}
