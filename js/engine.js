@@ -222,6 +222,7 @@ export class Position {
     this.loStack = [];
     this.hiStack = [];
     this.scoreStack = [];
+    this.nullMarks = []; // vị trí trong loStack của các nước bỏ lượt (null-move)
     this.recompute();
   }
 
@@ -286,6 +287,7 @@ export class Position {
   }
 
   makeNull() {
+    this.nullMarks.push(this.loStack.length);
     this.loStack.push(this.hashLo);
     this.hiStack.push(this.hashHi);
     this.scoreStack.push(this.score);
@@ -295,6 +297,7 @@ export class Position {
   }
 
   unmakeNull() {
+    this.nullMarks.pop();
     this.hashLo = this.loStack.pop();
     this.hashHi = this.hiStack.pop();
     this.score = this.scoreStack.pop();
@@ -494,7 +497,9 @@ export class Position {
   isRepetition() {
     const lo = this.loStack;
     const hi = this.hiStack;
-    const stop = Math.max(0, lo.length - 60);
+    const marks = this.nullMarks;
+    // Thế cờ trước một nước bỏ lượt không thực sự xảy ra trên bàn, không được tính.
+    const stop = Math.max(0, lo.length - 60, marks.length ? marks[marks.length - 1] + 1 : 0);
     for (let i = lo.length - 2; i >= stop; i -= 2) {
       if (lo[i] === this.hashLo && hi[i] === this.hashHi) return true;
     }
@@ -686,7 +691,17 @@ class Searcher {
         s = -this.negamax(depth - 1, -beta, -alpha, ply + 1, true);
       } else {
         let reduce = 0;
-        if (depth >= 3 && legal > 4 && !inCheck && !captured && scores[i] < 1 << 23 && !pos.inCheck(pos.side)) {
+        const mateWindow = alpha > MATE_BOUND || beta < -MATE_BOUND || alpha < -MATE_BOUND;
+        if (
+          ply > 0 &&
+          depth >= 3 &&
+          legal > 4 &&
+          !inCheck &&
+          !captured &&
+          !mateWindow &&
+          scores[i] < 1 << 23 &&
+          !pos.inCheck(pos.side)
+        ) {
           reduce = legal > 12 ? 2 : 1;
         }
         s = -this.negamax(depth - 1 - reduce, -alpha - 1, -alpha, ply + 1, true);
@@ -767,7 +782,7 @@ export function search(pos, { timeMs = 1000, maxDepth = 64, noise = 0, clear = t
     depthDone = d;
     s.canStop = true;
     if (legal.length === 1) break;
-    if (Math.abs(score) > MATE_BOUND) break;
+    if (Math.abs(score) > MATE_BOUND && MATE - Math.abs(score) <= d) break;
     if (now() - start > timeMs * 0.45) break; // vòng sau khó kịp hoàn thành
   }
   return { move: bestMove, score: bestScore, depth: depthDone, nodes: s.nodes, timeMs: Math.round(now() - start) };
