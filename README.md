@@ -3,7 +3,12 @@
 Game cờ tướng (Xiangqi) 3D chạy trên trình duyệt, dựng bằng [Three.js](https://threejs.org/).
 Bạn chơi với máy; AI chạy trong Web Worker nên giao diện không bị giật khi máy đang tính.
 
-## Chạy game
+## Chơi online
+
+<https://ansutung.github.io/mini-chess/>. Trang tự deploy lên GitHub Pages qua `.github/workflows/pages.yml`
+mỗi khi push, nhưng chỉ chạy được khi đã bật Pages: **Settings → Pages → Source: GitHub Actions**.
+
+## Chạy game trên máy
 
 Không cần build. Chỉ cần phục vụ thư mục qua HTTP (ES module và Web Worker không chạy với `file://`):
 
